@@ -4,28 +4,31 @@ namespace App\Controller;
 
 use App\Models\Empresa\Empresa;
 use App\Repositories\EmpresaRepository;
+use App\Services\JwtServices;
 use App\traits\ValidationsTrait;
 use Exception;
 use Psr\Http\Message\ServerRequestInterface;
 use Nyholm\Psr7\Response;
 use Psr\Http\Message\ResponseInterface;
 
+
 class AuthController
 {
     use ValidationsTrait;
 
-    public function __construct(private EmpresaRepository $repository)
+    public function __construct(private EmpresaRepository $repository, private JwtServices $jwt)
     {}
 
     public function register(ServerRequestInterface $request): ResponseInterface
     {
         $params = json_decode($request->getBody()->getContents(), true);
+        if(empty($params) || !$params) {
+            return $this->respondWithError("Nenhum dado recebido", 500);
+        }
 
         $requiredFields = ['razao_social', 'nome_fantasia', 'cnpj', 'email', 'username', 'password'];
-        foreach ($requiredFields as $field) {
-            if (empty($params[$field])) {
-                return $this->respondWithError("Campo '$field' é obrigatório.", 400);
-            }
+        if ($error = $this->validaCampos($requiredFields, $params)) {
+            return $error;
         }
 
         $razaoSocial = filter_var($params['razao_social']);
@@ -72,9 +75,37 @@ class AuthController
         return $this->respondWithSuccess("Empresa registrada com sucesso.");
     }
 
-    public function Login(ServerRequestInterface $request): ResponseInterface
+    public function login(ServerRequestInterface $request): ResponseInterface
     {
-        //TODO
+        $params = json_decode($request->getBody()->getContents(), true);
+        if(empty($params) || !$params) {
+            return $this->respondWithError("Nenhum dado recebido", 500);
+        }
+
+        $requiredFields = ['username', 'password'];
+        if ($error = $this->validaCampos($requiredFields, $params)) {
+            return $error;
+        }
+
+        $username = filter_var($params['username']);
+        $password = filter_var($params['password']);
+
+        try{
+            $empresa = $this->repository->getEmpresaByUsername($username);
+        }catch(Exception $e) {
+            return $this->respondWithError("username ou password incorretos.", 500);
+        }
+        
+        if(!password_verify($password, $empresa->getPassword())){
+            return $this->respondWithError("username ou password incorretos.", 500);
+        }
+
+        $token = $this->jwt->generateJwt([
+            'sub' => $empresa->getId(),
+            'username' => $empresa->getUserName()
+        ]);
+
+        return $this->respondWithSuccess("Login realizado com sucesso.", ['token' => $token]);
     }
 
     

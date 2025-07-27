@@ -18,8 +18,8 @@ class Empresa implements EmpresaInterface
         private string $razaoSocial,
         private string $nomeFantasia,
         private string $cnpj,
-        private string $userName,
         private string $email,
+        private string $userName,
         private string $password,
     ) {
 

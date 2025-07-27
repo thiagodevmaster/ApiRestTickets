@@ -51,6 +51,21 @@ trait ValidationsTrait
         return preg_match('/^[a-zA-Z0-9]{5,}$/', $username);
     }
 
+    public function validaCampos(array $requiredFields, array $params)
+    {
+        if (empty($params)) {
+            return $this->respondWithError("Nenhuma informação recebida", 400);
+        }
+
+        foreach ($requiredFields as $field) {
+            if (empty($params[$field])) {
+                return $this->respondWithError("Campo '$field' é obrigatório.", 400);
+            }
+        }
+
+        return null; 
+    }
+
     public function respondWithError(string $message, int $statusCode): ResponseInterface
     {
         return new Response(
@@ -60,12 +75,12 @@ trait ValidationsTrait
         );
     }
 
-    public function respondWithSuccess(string $message): ResponseInterface
+    public function respondWithSuccess(string $message, array $data = []): ResponseInterface
     {
         return new Response(
             200,
             ['Content-Type' => 'application/json'],
-            json_encode(['message' => $message])
+            json_encode(array_merge(['message' => $message], $data))
         );
     }
 }

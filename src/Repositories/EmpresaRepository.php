@@ -2,8 +2,11 @@
 
 namespace App\Repositories;
 
+use App\Models\Empresa\Empresa;
 use App\Models\Empresa\EmpresaInterface;
+use Exception;
 use PDO;
+use PDOStatement;
 
 class EmpresaRepository
 {
@@ -79,6 +82,49 @@ class EmpresaRepository
         $stmt->execute();
 
         return $stmt->fetchColumn() > 0;
+    }
+
+    public function hydrateEmpresa(PDOStatement $stmt): array
+    {
+        $empresaDataList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $empresaList = [];
+
+        foreach($empresaDataList as $empresa) {
+            $item = new Empresa(
+                $empresa['razao_social'],
+                $empresa['nome_fantasia'],
+                $empresa['cnpj'],
+                $empresa['email'],
+                $empresa['username'],
+                $empresa['password']
+            );
+
+            $item->setId($empresa['id']);
+
+            $empresaList[] = $item;
+        }
+
+        return $empresaList;
+    }
+
+    public function getEmpresaByUsername(string $username): ?EmpresaInterface 
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE username = :username;";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindValue(':username', $username);
+
+        if(!$stmt->execute()){
+            throw new Exception("Não encontrado empresa com este username");
+        }
+
+        $empresaData = self::hydrateEmpresa($stmt);
+
+        if(empty($empresaData)){
+            throw new Exception("Não foi possivel tratar os dados desta empresa");
+        }
+        
+        return $empresaData[0];
     }
 
 }

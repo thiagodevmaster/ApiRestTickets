@@ -1,8 +1,15 @@
 <?php
 
+error_reporting(0);
+ini_set('display_errors', 0 );
+
+use App\Middleware\AuthMiddleware;
+use App\Services\JwtServices;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7Server\ServerRequestCreator;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 use function FastRoute\simpleDispatcher;
 
@@ -54,14 +61,34 @@ switch ($routeInfo[0]) {
         break;
 
     case FastRoute\Dispatcher::FOUND:
-        [$controllerClass, $method] = $routeInfo[1];
+        [$controllerClass, $method, $authRequired] = $routeInfo[1];
         $vars = $routeInfo[2];
 
         try {
-            $controller = $container->get($controllerClass);
+            if ($authRequired) {
+                $jwtService = $container->get(JwtServices::class);
+                $middleware = new AuthMiddleware($jwtService);
 
-            $response = call_user_func_array([$controller, $method], [$request, $vars]);
+                $response = $middleware->proccess($request, new class($controllerClass, $method, $container, $vars) implements RequestHandlerInterface {
+                    public function __construct(
+                        private string $controllerClass,
+                        private string $method,
+                        private $container,
+                        private array $vars
+                    ) {}
 
+                    public function handle(ServerRequestInterface $request): ResponseInterface {
+                        $controller = $this->container->get($this->controllerClass);
+                        return call_user_func_array([$controller, $this->method], [$request, $this->vars]);
+                    }
+                });
+            } else {
+                // Rota pública
+                $controller = $container->get($controllerClass);
+                $response = call_user_func_array([$controller, $method], [$request, $vars]);
+            }
+
+            // Envia resposta normalmente
             if ($response instanceof ResponseInterface) {
                 http_response_code($response->getStatusCode());
 
