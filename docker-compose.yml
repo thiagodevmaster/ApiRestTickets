@@ -39,6 +39,34 @@ services:
     networks:
       - cupons-network
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: cupons_phpmyadmin
+    environment:
+      PMA_HOST: cupons_mysql
+      PMA_USER: thiago
+      PMA_PASSWORD: 123456
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+    networks:
+      - cupons-network
+
+  migrator:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: cupons_migrator
+    depends_on:
+      - mysql
+      - php
+    volumes:
+      - .:/var/www
+    command: ["php", "/var/www/run-migration.php"]
+    networks:
+      - cupons-network
+
 volumes:
   dbdata:
 

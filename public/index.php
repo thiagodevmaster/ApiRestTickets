@@ -2,6 +2,7 @@
 
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7Server\ServerRequestCreator;
+use Psr\Http\Message\ResponseInterface;
 
 use function FastRoute\simpleDispatcher;
 
@@ -61,16 +62,28 @@ switch ($routeInfo[0]) {
 
             $response = call_user_func_array([$controller, $method], [$request, $vars]);
 
-            // Se o controller retornar um array ou objeto, é convertido em JSON
-            if (is_array($response) || is_object($response)) {
+            if ($response instanceof ResponseInterface) {
+                http_response_code($response->getStatusCode());
+
+                foreach ($response->getHeaders() as $name => $values) {
+                    foreach ($values as $value) {
+                        header(sprintf('%s: %s', $name, $value), false);
+                    }
+                }
+
+                echo (string) $response->getBody();
+            } elseif (is_array($response) || is_object($response)) {
+                header("Content-Type: application/json");
                 echo json_encode($response);
             } elseif (is_string($response)) {
-                echo $response; 
+                echo $response;
             } else {
                 echo json_encode(['success' => true]);
             }
+
         } catch (Throwable $e) {
             http_response_code(500);
+            header("Content-Type: application/json");
             echo json_encode([
                 'error' => 'Erro interno do servidor',
                 'message' => $e->getMessage()
