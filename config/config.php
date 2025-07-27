@@ -2,11 +2,10 @@
 
 use Dotenv\Dotenv;
 
-$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv::createImmutable(__DIR__  . "/../");
 $dotenv->load();
 
-define('DB_DRIVE', DB_DRIVE);
-define('DB_HOST', DB_HOST);
-define('DB_USERNAME', DB_USERNAME);
-define('DB_DATABASE', DB_DATABASE);
-define('DB_PASSWORD', DB_PASSWORD);
+define('DB_HOST', $_ENV['DB_HOST']);
+define('DB_USERNAME', $_ENV['DB_USERNAME']);
+define('DB_DATABASE', $_ENV['DB_NAME']);
+define('DB_PASSWORD', $_ENV['DB_PASSWORD']);
